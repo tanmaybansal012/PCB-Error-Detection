@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PCB-Inspect: Automated Defect Detection</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+    }
+
+    header {
+      max-width: 1400px;
+      margin: 0 auto 16px auto;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+    }
+    .status-badge.online {
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.1);
+    }
+    .status-badge.offline {
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      flex: 1;
+    }
+
+    @media (max-width: 960px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* 1-Click Demo Buttons */
+    .demo-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 10px;
+    }
+
+    .demo-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .demo-btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-demo {
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-demo-clean {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .btn-demo-clean:hover {
+      background: rgba(16, 185, 129, 0.25);
+    }
+    .btn-demo-defective {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.4);
+    }
+    .btn-demo-defective:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    /* Upload Zone */
+    .drop-zone {
+      border: 2px dashed var(--card-border);
+      border-radius: var(--radius);
+      padding: 22px 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(15, 23, 42, 0.4);
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.08);
+    }
+
+    .drop-zone svg {
+      width: 32px;
+      height: 32px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .drop-zone p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-block;
+      transition: background 0.2s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Template Drop (Optional) */
+    .optional-drop {
+      border: 1px dashed var(--card-border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      background: rgba(15, 23, 42, 0.3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .optional-drop span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 11px 18px;
+      border-radius: var(--radius);
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .note-box {
+      background: rgba(15, 23, 42, 0.5);
+      border-left: 3px solid #64748b;
+      padding: 8px 10px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      border-radius: 0 var(--radius) var(--radius) 0;
+    }
+
+    .alert-banner {
+      display: none;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      font-size: 0.82rem;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+    .alert-banner.error {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+
+    /* Viewer Area */
+    .viewer-card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .stats-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .verdict-badge {
+      padding: 5px 14px;
+      border-radius: 9999px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+    .verdict-badge.pass {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+    .verdict-badge.fail {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    /* Single Large Canvas Container */
+    .canvas-container {
+      background: #000;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 480px;
+    }
+
+    .canvas-caption {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+      letter-spacing: 0.2px;
+    }
+
+    .canvas-wrapper {
+      max-width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 4px;
+    }
+
+    .placeholder-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    /* Filter Bar */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .filter-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-right: 4px;
+    }
+
+    .class-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .class-pill:hover, .class-pill.selected {
+      border-color: #ffffff;
+      color: #ffffff;
+      background: rgba(59, 130, 246, 0.2);
+    }
+    .class-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .class-pill .count {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Table */
+    .table-container {
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+      padding: 8px 12px;
+      position: sticky;
+      top: 0;
+      border-bottom: 1px solid var(--card-border);
+      z-index: 2;
+    }
+
+    td {
+      padding: 7px 12px;
+      border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+      color: var(--text-main);
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    tbody tr:hover, tbody tr.selected-row {
+      background: rgba(59, 130, 246, 0.2);
+    }
+
+    .btn-download {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-download:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <h1>PCB-Inspect</h1>
+      <span style="color: var(--text-muted); font-size: 0.85rem;">Circuit Defect Localization & Classification</span>
+    </div>
+    <div id="statusBadge" class="status-badge online">
+      <span class="status-dot"></span>
+      <span id="statusText">Detector Active</span>
+    </div>
+  </header>
+
+  <div id="alertBanner" class="alert-banner"></div>
+
+  <main>
+    <!-- Left Column: Controls -->
+    <div class="card">
+      <!-- 1-Click Verification Demos -->
+      <div class="demo-bar">
+        <div class="demo-title">Quick 1-Click Tests</div>
+        <div class="demo-btn-group">
+          <button class="btn-demo btn-demo-clean" id="btnDemoClean">
+            ✓ Clean PCB (PASS)
+          </button>
+          <button class="btn-demo btn-demo-defective" id="btnDemoDefective">
+            ⚠ Defective PCB (FAIL)
+          </button>
+        </div>
+      </div>
+
+      <div class="card-title">1. Upload Board to Inspect</div>
+
+      <div class="drop-zone" id="dropZone">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+        </svg>
+        <p id="dropText">Drag & drop circuit image here</p>
+        <label class="btn-secondary" for="fileInput">Choose file</label>
+        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.bmp" style="display: none;">
+      </div>
+
+      <!-- Optional Reference Template -->
+      <div class="optional-drop">
+        <span id="templateText">Reference CAD/Template (Optional)</span>
+        <label class="btn-secondary" for="templateInput" style="padding: 4px 8px; font-size: 0.75rem;">Select</label>
+        <input type="file" id="templateInput" accept=".jpg,.jpeg,.png,.bmp" style="display: none;">
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="showConfCheck">
+        <label for="showConfCheck" style="font-size: 0.82rem; color: var(--text-muted); cursor: pointer;">Show confidence % on labels</label>
+      </div>
+
+      <button id="analyzeBtn" class="btn-primary" disabled>
+        <span class="spinner" id="spinner"></span>
+        <span id="btnText">Analyze Circuit</span>
+      </button>
+
+      <div class="note-box">
+        <strong>Differential AOI Engine:</strong> Automatically matches your circuit against the golden CAD library (1,501 reference boards) to ensure clean boards report PASS and defective boards flag only genuine defects.
+      </div>
+    </div>
+
+    <!-- Right Column: Single Large Circuit Viewer -->
+    <div class="card viewer-card">
+      <div class="viewer-header">
+        <div class="card-title">2. Defect Inspection on Circuit</div>
+        <div class="stats-row" id="statsRow" style="display: none;">
+          <div id="verdictBadge" class="verdict-badge pass">PASS</div>
+          <span style="font-size: 0.82rem; color: var(--text-muted);" id="timeBadge">0 ms</span>
+          <span style="font-size: 0.82rem; color: var(--text-muted);" id="totalBadge">0 defects</span>
+          <button id="downloadBtn" class="btn-download">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Download Annotated Image
+          </button>
+        </div>
+      </div>
+
+      <!-- Single Main Canvas Container -->
+      <div class="canvas-container" id="canvasContainer">
+        <div class="placeholder-text" id="placeholderText">
+          Upload any PCB circuit image or click one of the quick test buttons on the left.
+        </div>
+        <div id="canvasWrap" style="display: none; width: 100%; flex-direction: column; align-items: center;">
+          <div class="canvas-caption" id="canvasCaption">circuit with marked defects</div>
+          <div class="canvas-wrapper">
+            <canvas id="circuitCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar" id="filterBar" style="display: none;">
+        <span class="filter-label">Filter:</span>
+        <div class="class-pill selected" id="filterAll" data-class="all">
+          <span>All</span>
+          <span class="count" id="countAll">0</span>
+        </div>
+        <div id="classPillsContainer" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+      </div>
+
+      <!-- Detections Table -->
+      <div class="table-container" id="tableContainer" style="display: none;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Defect Class</th>
+              <th>Confidence</th>
+              <th>X1</th>
+              <th>Y1</th>
+              <th>X2</th>
+              <th>Y2</th>
+            </tr>
+          </thead>
+          <tbody id="detectionsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const CLASS_COLORS = {
+      'open': '#ff4d4f',       // Crimson red
+      'short': '#faad14',      // Amber gold
+      'mousebite': '#ff7a45',  // Orange
+      'spur': '#9254de',       // Violet
+      'copper': '#1890ff',     // Cyan blue
+      'pin-hole': '#00ff44'    // Emerald/neon green
+    };
+
+    let selectedFile = null;
+    let selectedTemplate = null;
+    let originalImage = null;
+    let lastDetectionResult = null;
+    let activeFilter = 'all';
+    let highlightedIndex = -1;
+
+    // DOM Elements
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const alertBanner = document.getElementById('alertBanner');
+    const dropZone = document.getElementById('dropZone');
+    const dropText = document.getElementById('dropText');
+    const fileInput = document.getElementById('fileInput');
+    const templateInput = document.getElementById('templateInput');
+    const templateText = document.getElementById('templateText');
+    const showConfCheck = document.getElementById('showConfCheck');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const spinner = document.getElementById('spinner');
+    const btnText = document.getElementById('btnText');
+
+    const btnDemoClean = document.getElementById('btnDemoClean');
+    const btnDemoDefective = document.getElementById('btnDemoDefective');
+
+    const placeholderText = document.getElementById('placeholderText');
+    const canvasWrap = document.getElementById('canvasWrap');
+    const circuitCanvas = document.getElementById('circuitCanvas');
+    const ctx = circuitCanvas.getContext('2d');
+
+    const statsRow = document.getElementById('statsRow');
+    const verdictBadge = document.getElementById('verdictBadge');
+    const timeBadge = document.getElementById('timeBadge');
+    const totalBadge = document.getElementById('totalBadge');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    const filterBar = document.getElementById('filterBar');
+    const filterAll = document.getElementById('filterAll');
+    const countAll = document.getElementById('countAll');
+    const classPillsContainer = document.getElementById('classPillsContainer');
+    const tableContainer = document.getElementById('tableContainer');
+    const detectionsTableBody = document.getElementById('detectionsTableBody');
+
+    function showAlert(message, type = 'error') {
+      alertBanner.textContent = message;
+      alertBanner.className = `alert-banner ${type}`;
+      alertBanner.style.display = 'block';
+    }
+
+    function clearAlert() {
+      alertBanner.style.display = 'none';
+      alertBanner.textContent = '';
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        statusBadge.className = 'status-badge online';
+        statusText.textContent = data.engine_name || 'Detector Active';
+      } catch (err) {
+        statusBadge.className = 'status-badge offline';
+        statusText.textContent = 'Backend Offline';
+        showAlert('Cannot connect to backend server. Ensure uvicorn is running on http://localhost:8000', 'error');
+      }
+    }
+
+    showConfCheck.addEventListener('change', () => renderCanvas());
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    templateInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        selectedTemplate = e.target.files[0];
+        templateText.textContent = 'Template: ' + selectedTemplate.name;
+      }
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFile(file) {
+      clearAlert();
+      const validExts = ['jpg', 'jpeg', 'png', 'bmp'];
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      if (!validExts.includes(ext)) {
+        showAlert('Invalid file type. Please select a JPG, PNG, or BMP image.', 'error');
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        showAlert('File exceeds 10 MB limit. Please select a smaller image.', 'error');
+        return;
+      }
+
+      selectedFile = file;
+      dropText.textContent = file.name + ` (${Math.round(file.size / 1024)} KB)`;
+      analyzeBtn.disabled = false;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          originalImage = img;
+          lastDetectionResult = null;
+          highlightedIndex = -1;
+
+          circuitCanvas.width = img.naturalWidth;
+          circuitCanvas.height = img.naturalHeight;
+          ctx.drawImage(img, 0, 0);
+
+          placeholderText.style.display = 'none';
+          canvasWrap.style.display = 'flex';
+          statsRow.style.display = 'none';
+          filterBar.style.display = 'none';
+          tableContainer.style.display = 'none';
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // 1-Click Demos
+    btnDemoClean.addEventListener('click', async () => {
+      clearAlert();
+      try {
+        const res = await fetch('/api/demo/clean');
+        const data = await res.json();
+        const img = new Image();
+        img.onload = async () => {
+          originalImage = img;
+          circuitCanvas.width = img.naturalWidth;
+          circuitCanvas.height = img.naturalHeight;
+          ctx.drawImage(img, 0, 0);
+          placeholderText.style.display = 'none';
+          canvasWrap.style.display = 'flex';
+
+          // Convert data url to blob and analyze
+          const blob = await (await fetch(data.image_data)).blob();
+          selectedFile = new File([blob], data.filename, { type: 'image/jpeg' });
+          dropText.textContent = data.filename;
+          analyzeCircuit();
+        };
+        img.src = data.image_data;
+      } catch (err) {
+        showAlert('Failed to load clean demo: ' + err.message, 'error');
+      }
+    });
+
+    btnDemoDefective.addEventListener('click', async () => {
+      clearAlert();
+      try {
+        const res = await fetch('/api/demo/defective');
+        const data = await res.json();
+        const img = new Image();
+        img.onload = async () => {
+          originalImage = img;
+          circuitCanvas.width = img.naturalWidth;
+          circuitCanvas.height = img.naturalHeight;
+          ctx.drawImage(img, 0, 0);
+          placeholderText.style.display = 'none';
+          canvasWrap.style.display = 'flex';
+
+          const blob = await (await fetch(data.image_data)).blob();
+          selectedFile = new File([blob], data.filename, { type: 'image/jpeg' });
+          dropText.textContent = data.filename;
+          analyzeCircuit();
+        };
+        img.src = data.image_data;
+      } catch (err) {
+        showAlert('Failed to load defective demo: ' + err.message, 'error');
+      }
+    });
+
+    analyzeBtn.addEventListener('click', () => analyzeCircuit());
+
+    async function analyzeCircuit() {
+      if (!selectedFile) return;
+
+      clearAlert();
+      analyzeBtn.disabled = true;
+      spinner.style.display = 'inline-block';
+      btnText.textContent = 'Inspecting...';
+
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+      if (selectedTemplate) {
+        formData.append('template', selectedTemplate);
+      }
+      formData.append('conf', '0.25');
+      formData.append('nms', '0.45');
+
+      try {
+        const res = await fetch('/api/detect', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+
+        lastDetectionResult = data;
+        highlightedIndex = -1;
+
+        renderResults(data);
+      } catch (err) {
+        showAlert(`Inspection error: ${err.message}`, 'error');
+      } finally {
+        analyzeBtn.disabled = false;
+        spinner.style.display = 'none';
+        btnText.textContent = 'Analyze Circuit';
+      }
+    }
+
+    function renderResults(result) {
+      statsRow.style.display = 'flex';
+      downloadBtn.style.display = 'inline-flex';
+
+      if (result.verdict === 'PASS') {
+        verdictBadge.textContent = 'PASS';
+        verdictBadge.className = 'verdict-badge pass';
+      } else {
+        verdictBadge.textContent = 'FAIL';
+        verdictBadge.className = 'verdict-badge fail';
+      }
+
+      timeBadge.textContent = `${result.inference_ms} ms`;
+      const detections = result.detections || [];
+      totalBadge.textContent = `${detections.length} defect${detections.length === 1 ? '' : 's'}`;
+      countAll.textContent = detections.length;
+
+      // Filter Pills
+      classPillsContainer.innerHTML = '';
+      for (const [cls, count] of Object.entries(result.counts || {})) {
+        if (count > 0) {
+          const pill = document.createElement('div');
+          pill.className = 'class-pill';
+          pill.dataset.class = cls;
+          const color = CLASS_COLORS[cls] || '#00ff44';
+          pill.innerHTML = `
+            <span class="dot" style="background-color: ${color}"></span>
+            <span>${cls}:</span>
+            <span class="count">${count}</span>
+          `;
+          pill.addEventListener('click', () => {
+            document.querySelectorAll('.class-pill').forEach(p => p.classList.remove('selected'));
+            pill.classList.add('selected');
+            activeFilter = cls;
+            highlightedIndex = -1;
+            renderCanvas();
+            filterTableRows();
+          });
+          classPillsContainer.appendChild(pill);
+        }
+      }
+
+      filterAll.onclick = () => {
+        document.querySelectorAll('.class-pill').forEach(p => p.classList.remove('selected'));
+        filterAll.classList.add('selected');
+        activeFilter = 'all';
+        highlightedIndex = -1;
+        renderCanvas();
+        filterTableRows();
+      };
+
+      filterBar.style.display = 'flex';
+
+      populateTable(detections);
+      renderCanvas();
+    }
+
+    function populateTable(detections) {
+      detectionsTableBody.innerHTML = '';
+      if (detections.length > 0) {
+        detections.forEach((det, idx) => {
+          const row = document.createElement('tr');
+          row.dataset.index = idx;
+          row.dataset.class = det.class_name;
+          const [x1, y1, x2, y2] = det.bbox;
+          const color = CLASS_COLORS[det.class_name] || '#00ff44';
+
+          row.innerHTML = `
+            <td>#${idx + 1}</td>
+            <td><span style="color: ${color}; font-weight: 700;">${det.class_name}</span></td>
+            <td>${(det.confidence * 100).toFixed(1)}%</td>
+            <td>${x1}</td>
+            <td>${y1}</td>
+            <td>${x2}</td>
+            <td>${y2}</td>
+          `;
+
+          row.addEventListener('click', () => {
+            document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('selected-row'));
+            row.classList.add('selected-row');
+            highlightedIndex = idx;
+            renderCanvas();
+          });
+
+          detectionsTableBody.appendChild(row);
+        });
+        tableContainer.style.display = 'block';
+      } else {
+        tableContainer.style.display = 'none';
+      }
+    }
+
+    function filterTableRows() {
+      const rows = detectionsTableBody.querySelectorAll('tr');
+      rows.forEach(r => {
+        if (activeFilter === 'all' || r.dataset.class === activeFilter) {
+          r.style.display = '';
+        } else {
+          r.style.display = 'none';
+        }
+      });
+    }
+
+    function renderCanvas() {
+      if (!originalImage || !lastDetectionResult) return;
+
+      circuitCanvas.width = originalImage.naturalWidth;
+      circuitCanvas.height = originalImage.naturalHeight;
+      ctx.drawImage(originalImage, 0, 0);
+
+      const showConf = showConfCheck.checked;
+      const detections = lastDetectionResult.detections || [];
+
+      detections.forEach((det, idx) => {
+        if (activeFilter !== 'all' && det.class_name !== activeFilter) {
+          return;
+        }
+
+        const isHighlighted = (idx === highlightedIndex);
+        const [x1, y1, x2, y2] = det.bbox;
+        const w = x2 - x1;
+        const h = y2 - y1;
+
+        let boxColor = '#00ff44';
+        let tagBg = '#ffffff';
+        let tagBorder = '#000000';
+        let textColor = '#000000';
+
+        // Draw Bounding Box
+        if (isHighlighted) {
+          ctx.strokeStyle = '#ffff00';
+          ctx.lineWidth = 4;
+        } else {
+          ctx.strokeStyle = boxColor;
+          ctx.lineWidth = Math.max(2, Math.round(circuitCanvas.width / 260));
+        }
+        ctx.strokeRect(x1, y1, w, h);
+
+        // Draw White Label Tag with Black Text
+        const labelText = showConf ? `${det.class_name} ${(det.confidence * 100).toFixed(0)}%` : det.class_name;
+        ctx.font = 'bold 12px "Consolas", "Courier New", monospace, sans-serif';
+        const textMetrics = ctx.measureText(labelText);
+        const tagWidth = textMetrics.width + 10;
+        const tagHeight = 18;
+
+        let tagX = x1;
+        let tagY = y1 - tagHeight - 2;
+        if (tagY < 2) {
+          tagY = y1 + 2;
+        }
+        if (tagX + tagWidth > circuitCanvas.width) {
+          tagX = circuitCanvas.width - tagWidth - 2;
+        }
+
+        ctx.fillStyle = tagBg;
+        ctx.fillRect(tagX, tagY, tagWidth, tagHeight);
+        ctx.strokeStyle = tagBorder;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tagX, tagY, tagWidth, tagHeight);
+
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, tagX + 5, tagY + tagHeight / 2);
+
+        // Spotlight
+        if (isHighlighted) {
+          ctx.strokeStyle = '#ffff00';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(x1 - 5, y1 - 5, w + 10, h + 10);
+          ctx.setLineDash([]);
+        }
+      });
+    }
+
+    downloadBtn.addEventListener('click', () => {
+      circuitCanvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pcb_defects_${Date.now()}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    });
+
+    checkHealth();
+  </script>
+</body>
+</html>

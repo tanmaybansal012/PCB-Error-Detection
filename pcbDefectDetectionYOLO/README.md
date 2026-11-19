@@ -36,10 +36,11 @@ For a random image from test dataset, the results was as follow:
 
 ![Image](./img/6.png)
 
+## Role in Master Project (PCB-Inspect)
+This repository serves as the **optional deep learning baseline** (Stage 4) for the classical ECE ML pipeline in the root project. It is used to compare:
+- **Detection Performance**: Accuracy, mAP, and F-score.
+- **Compute & Power Footprint**: Heavy GPU inference (Darknet CUDA) vs. deterministic low-power CPU/DSP execution.
+- **Explainability**: Black-box latent convolutional weights vs. physically grounded hand-crafted features (Hu moments, GLCM texture, FFT energy).
 
-## User Interface
-We have implemented a simple web application for our project using pywebIO (which is a Python library that allows you to build simple web applications without the knowledge of HTML and JavaScript) to demonstrate our project.
-
-![Image](./img/7.png)
 
 

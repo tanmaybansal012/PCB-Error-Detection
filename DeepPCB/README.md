@@ -22,7 +22,7 @@ Each annotated image owns an annotation file with the same filename, e.g.**_0004
 <img src="https://github.com/tangsanli5201/DeepPCB/blob/master/fig/CountPCB.png" width="560"> 
  </div>
 
- The annotation tool is now available with the source code in the **_./tools_** directory.
+ The dataset is pre-annotated with ground-truth bounding boxes and defect labels in the **_./PCBData_** directory.
  
 ### Benchmarks
 The average precision rate and F-score are used for evaluation. A detection is correct only if the intersection of unit (IoU) between the detected bounding box and any of the ground truth box with the same class is larger than 0.33. F-score is calculated as: F-score=2PR/(P+R), where P and R is the precision and recall rate. Notice that F-score is threshold-sensitive, which means you could adjust your score threshold to obtain a better result. Although F-score is not as fair as the mAP criteria but more practical since a threshold should always be given when deploying the model and not all of the algorithms have a score evaluation for the target. Thus, F-score and mAP are both under consideration in the benchmarks. 
